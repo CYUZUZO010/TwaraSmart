@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: twarasmart-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: twarasmart
+      POSTGRES_USER: twara_user
+      POSTGRES_PASSWORD: twara_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - twarasmart_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twara_user -d twarasmart"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: twarasmart-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: twarasmart
+      DB_USER: twara_user
+      DB_PASSWORD: twara_pass
+      JWT_SECRET: change-this-super-secret-key-in-production-please-make-it-long-enough
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: twarasmart-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+    ports:
+      - "5173:5173"
+
+volumes:
+  twarasmart_pgdata:
